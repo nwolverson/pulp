@@ -8,14 +8,17 @@ import Data.Function.Uncurried
 import Data.Maybe
 import Data.Foldable
 import Data.Map as Map
+import Data.StrMap (empty, fromFoldable)
 import Data.Nullable (Nullable(), toNullable)
+import Data.Tuple (Tuple(..))
 import Node.Path as Path
 import Node.Encoding (Encoding(UTF8))
-import Node.FS.Aff (unlink, writeTextFile)
+import Node.FS.Aff (unlink, writeTextFile, readTextFile)
 import Node.Process as Process
 
 import Pulp.System.FFI
 import Pulp.System.Stream (WritableStream())
+import Pulp.System.Files
 import Pulp.Outputter
 import Pulp.Args
 import Pulp.Args.Get
@@ -24,6 +27,7 @@ import Pulp.Files
 import Pulp.Build as Build
 import Pulp.Run (makeEntry, jsEscape)
 import Pulp.Project
+import Pulp.Sorcery
 
 action :: Action
 action = Action \args -> do
@@ -68,19 +72,25 @@ optimising = Action \args -> do
   transform <- getOption "transform" opts
   standalone <- getOption "standalone" opts
   skipEntryPoint' <- getFlag "skipEntryPoint" opts
+  sourceMaps <- getFlag "sourceMaps" opts
   let skipEntryPoint = skipEntryPoint' || isJust standalone
 
   skipMainCheck <- getFlag "noCheckMain" opts
   when (not (skipEntryPoint || skipMainCheck))
     (Build.checkEntryPoint out opts)
 
+  { path: tmpFilePath } <- openTemp { prefix: "pulp-browserify-bundle-", suffix: ".js" }
+
   let bundleArgs = fold
         [ ["--module=" <> main]
         , if skipEntryPoint then [] else ["--main=" <> main]
+        , if sourceMaps then ["--source-maps"] else []
+        , ["-o", tmpFilePath]
         , args.remainder
         ]
 
-  bundledJs <- pursBundle (outputModules buildPath) bundleArgs Nothing
+  _ <- pursBundle (outputModules buildPath) bundleArgs Nothing
+  bundledJs <- readTextFile UTF8 tmpFilePath
 
   out.log "Browserifying..."
 
@@ -93,7 +103,15 @@ optimising = Action \args -> do
       , transform: toNullable transform
       , standalone: toNullable standalone
       , out: out'
+      , debug: sourceMaps
       }
+  getOption "to" opts >>= case _ of
+    Just to | sourceMaps -> do
+      -- Read map directly to pass to sorcery to avoid relative path issue
+      bundleMap <- readTextFile UTF8 (tmpFilePath <> ".map")
+      unlink (tmpFilePath <> ".map")
+      sorcery (fromFoldable [Tuple "_stream_0.js" bundleMap]) to
+    _ -> pure unit
 
 incremental :: Action
 incremental = Action \args -> do
@@ -117,6 +135,7 @@ incremental = Action \args -> do
   skipEntryPoint' <- getFlag "skipEntryPoint" opts
   let skipEntryPoint = skipEntryPoint' && isNothing standalone
   main <- getOption' "main" opts
+  sourceMaps <- getFlag "sourceMaps" opts
 
   noCheckMain <- getFlag "noCheckMain" opts
   when (not (skipEntryPoint || noCheckMain))
@@ -139,7 +158,11 @@ incremental = Action \args -> do
       , transform: toNullable transform
       , standalone: toNullable standalone
       , out: out'
+      , debug: sourceMaps
       }
+  getOption "to" opts >>= case _ of
+    Just to | sourceMaps -> sorcery empty to
+    _ -> pure unit
 
 -- | Given the build path, modify this process' NODE_PATH environment variable
 -- | for browserify.
@@ -158,6 +181,7 @@ type BrowserifyOptions =
   , transform  :: Nullable String
   , standalone :: Nullable String
   , out        :: WritableStream
+  , debug      :: Boolean
   }
 
 foreign import browserifyBundle' :: Fn2 BrowserifyOptions
@@ -174,6 +198,7 @@ type BrowserifyIncOptions =
   , transform  :: Nullable String
   , standalone :: Nullable String
   , out        :: WritableStream
+  , debug      :: Boolean
   }
 
 foreign import browserifyIncBundle' :: Fn2 BrowserifyIncOptions

@@ -12,11 +12,11 @@ function write(input, output, callback) {
 exports["browserifyBundle'"] = function browserifyBundle$prime(opts, callback) {
   var StringStream = require("string-stream");
   var browserify = require("browserify");
-
   var b = browserify({
     basedir: opts.basedir,
     entries: new StringStream(opts.src),
-    standalone: opts.standalone
+    standalone: opts.standalone,
+    debug: opts.debug
   });
   if (opts.transform) b.transform(opts.transform);
   write(b.bundle(), opts.out, callback);
@@ -28,7 +28,8 @@ exports["browserifyIncBundle'"] = function browserifyIncBundle$prime(opts, callb
   var b = browserifyInc({
     basedir: opts.buildPath,
     cacheFile: opts.cachePath,
-    standalone: opts.standalone
+    standalone: opts.standalone,
+    debug: opts.debug
   });
   b.add(opts.path);
   if (opts.transform) b.transform(opts.transform);
