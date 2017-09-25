@@ -431,7 +431,7 @@ describe("integration tests", function() {
     assert.equal(out.trim(), hello);
   }));
 
-  it("pulp browserify --source-maps -O --to", run(function*(sh, pulp, assert) {
+  it.only("pulp browserify --source-maps -O --to", run(function*(sh, pulp, assert) {
     yield pulp("init");
     yield pulp("browserify --source-maps -O --to out.js");
     const [out] = yield sh("node out.js");

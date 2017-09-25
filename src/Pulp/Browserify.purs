@@ -1,33 +1,35 @@
 
 module Pulp.Browserify where
 
-import Prelude
-import Control.Monad.Aff (apathize)
-import Control.Monad.Eff.Class (liftEff)
+import Data.Foldable
 import Data.Function.Uncurried
 import Data.Maybe
-import Data.Foldable
-import Data.Map as Map
-import Data.StrMap (empty, fromFoldable)
-import Data.Nullable (Nullable(), toNullable)
-import Data.Tuple (Tuple(..))
-import Node.Path as Path
-import Node.Encoding (Encoding(UTF8))
-import Node.FS.Aff (unlink, writeTextFile, readTextFile)
-import Node.Process as Process
-
-import Pulp.System.FFI
-import Pulp.System.Stream (WritableStream())
-import Pulp.System.Files
-import Pulp.Outputter
+import Prelude
 import Pulp.Args
 import Pulp.Args.Get
-import Pulp.Exec (pursBundle)
 import Pulp.Files
-import Pulp.Build as Build
-import Pulp.Run (makeEntry, jsEscape)
+import Pulp.Outputter
 import Pulp.Project
 import Pulp.Sorcery
+import Pulp.System.FFI
+import Pulp.System.Files
+
+import Control.Monad.Aff (apathize)
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Console (log)
+import Data.Map as Map
+import Data.Nullable (Nullable, toNullable)
+import Data.StrMap (empty, fromFoldable)
+import Data.Tuple (Tuple(..))
+import Node.Encoding (Encoding(UTF8))
+import Node.FS.Aff (unlink, writeTextFile, readTextFile)
+import Node.Path (dirname)
+import Node.Path as Path
+import Node.Process as Process
+import Pulp.Build as Build
+import Pulp.Exec (pursBundle)
+import Pulp.Run (makeEntry, jsEscape)
+import Pulp.System.Stream (WritableStream)
 
 action :: Action
 action = Action \args -> do
@@ -109,8 +111,9 @@ optimising = Action \args -> do
     Just to | sourceMaps -> do
       -- Read map directly to pass to sorcery to avoid relative path issue
       bundleMap <- readTextFile UTF8 (tmpFilePath <> ".map")
-      unlink (tmpFilePath <> ".map")
-      sorcery (fromFoldable [Tuple "_stream_0.js" bundleMap]) to
+      liftEff $ log tmpFilePath
+      -- unlink (tmpFilePath <> ".map")
+      sorcery (fromFoldable [Tuple "_stream_0.js" {map: bundleMap, baseDir: (dirname tmpFilePath) }]) to
     _ -> pure unit
 
 incremental :: Action
