@@ -63,7 +63,6 @@ function pulpFn(path, pulpPath) {
 export default function run(fn) {
   return function(done) {
     temp.mkdir("pulp-test-", (err, path) => {
-      console.log("testing with path: " + path);
       if (err) {
         throw err;
       } else {

@@ -16,14 +16,13 @@ import Pulp.System.Files
 
 import Control.Monad.Aff (apathize)
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Console (log)
 import Data.Map as Map
 import Data.Nullable (Nullable, toNullable)
 import Data.StrMap (empty, fromFoldable)
 import Data.Tuple (Tuple(..))
 import Node.Encoding (Encoding(UTF8))
 import Node.FS.Aff (unlink, writeTextFile, readTextFile)
-import Node.Path (dirname)
+import Node.Path (basename, dirname, resolve)
 import Node.Path as Path
 import Node.Process as Process
 import Pulp.Build as Build
@@ -98,6 +97,7 @@ optimising = Action \args -> do
 
   liftEff $ setupNodePath buildPath
 
+  toOpt <- getOption "to" opts
   Build.withOutputStream opts $ \out' -> do
     browserifyBundle
       { basedir: Path.resolve [] buildPath
@@ -106,14 +106,16 @@ optimising = Action \args -> do
       , standalone: toNullable standalone
       , out: out'
       , debug: sourceMaps
+      , outDir: maybe buildPath (resolve [ buildPath ] <<< dirname) toOpt
+      , tmpFilePath: tmpFilePath
       }
-  getOption "to" opts >>= case _ of
+  case toOpt of
     Just to | sourceMaps -> do
       -- Read map directly to pass to sorcery to avoid relative path issue
       bundleMap <- readTextFile UTF8 (tmpFilePath <> ".map")
-      liftEff $ log tmpFilePath
       -- unlink (tmpFilePath <> ".map")
-      sorcery (fromFoldable [Tuple "_stream_0.js" {map: bundleMap, baseDir: (dirname tmpFilePath) }]) to
+      sorcery empty to
+      pure unit
     _ -> pure unit
 
 incremental :: Action
@@ -153,6 +155,7 @@ incremental = Action \args -> do
               writeTextFile UTF8 entryPath entryJs
               pure entryPath
 
+  toOpt <- getOption "to" opts
   Build.withOutputStream opts $ \out' -> do
     browserifyIncBundle
       { basedir: buildPath
@@ -162,10 +165,11 @@ incremental = Action \args -> do
       , standalone: toNullable standalone
       , out: out'
       , debug: sourceMaps
+      , outDir: maybe buildPath (resolve [ buildPath ] <<< dirname) toOpt
       }
-  getOption "to" opts >>= case _ of
-    Just to | sourceMaps -> sorcery empty to
-    _ -> pure unit
+  -- case toOpt of
+  --   Just to | sourceMaps -> sorcery empty to
+  --   _ -> pure unit
 
 -- | Given the build path, modify this process' NODE_PATH environment variable
 -- | for browserify.
@@ -185,6 +189,8 @@ type BrowserifyOptions =
   , standalone :: Nullable String
   , out        :: WritableStream
   , debug      :: Boolean
+  , outDir     :: String
+  , tmpFilePath:: String
   }
 
 foreign import browserifyBundle' :: Fn2 BrowserifyOptions
@@ -202,6 +208,7 @@ type BrowserifyIncOptions =
   , standalone :: Nullable String
   , out        :: WritableStream
   , debug      :: Boolean
+  , outDir     :: String
   }
 
 foreign import browserifyIncBundle' :: Fn2 BrowserifyIncOptions

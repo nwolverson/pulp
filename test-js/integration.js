@@ -409,11 +409,18 @@ describe("integration tests", function() {
     assert.equal(out.trim(), hello);
   }));
 
-  it("pulp browserify --source-maps --to", run(function*(sh, pulp, assert) {
+  it.only("pulp browserify --source-maps --to", run(function*(sh, pulp, assert) {
     yield pulp("init");
     yield pulp("browserify --source-maps --to out.js");
     const [out] = yield sh("node out.js");
     assert.equal(out.trim(), hello);
+    assert.exists("out.js.map");
+  }));
+
+  it.only("pulp browserify --source-maps --to subdir", run(function*(sh, pulp, assert, temp) {
+    yield pulp("init");
+    yield fs.mkdir(path.join(temp, "subdir"));    
+    yield pulp("browserify --source-maps --to subdir/out.js");
     assert.exists("out.js.map");
   }));
 
@@ -436,6 +443,13 @@ describe("integration tests", function() {
     yield pulp("browserify --source-maps -O --to out.js");
     const [out] = yield sh("node out.js");
     assert.equal(out.trim(), hello);
+    assert.exists("out.js.map");
+  }));
+
+  it.only("pulp browserify --source-maps -O --to subdir", run(function*(sh, pulp, assert, temp) {
+    yield pulp("init");
+    yield fs.mkdir(path.join(temp, "subdir"));
+    yield pulp("browserify --source-maps -O --to subdir/out.js");
     assert.exists("out.js.map");
   }));
 
