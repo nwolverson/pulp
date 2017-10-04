@@ -18,11 +18,9 @@ import Control.Monad.Aff (apathize)
 import Control.Monad.Eff.Class (liftEff)
 import Data.Map as Map
 import Data.Nullable (Nullable, toNullable)
-import Data.StrMap (empty, fromFoldable)
-import Data.Tuple (Tuple(..))
 import Node.Encoding (Encoding(UTF8))
 import Node.FS.Aff (unlink, writeTextFile, readTextFile)
-import Node.Path (basename, dirname, resolve)
+import Node.Path (dirname, resolve)
 import Node.Path as Path
 import Node.Process as Process
 import Pulp.Build as Build
@@ -111,11 +109,8 @@ optimising = Action \args -> do
       }
   case toOpt of
     Just to | sourceMaps -> do
-      -- Read map directly to pass to sorcery to avoid relative path issue
-      bundleMap <- readTextFile UTF8 (tmpFilePath <> ".map")
-      -- unlink (tmpFilePath <> ".map")
-      sorcery empty to
-      pure unit
+      sorcery to
+      unlink (tmpFilePath <> ".map")
     _ -> pure unit
 
 incremental :: Action
@@ -167,9 +162,9 @@ incremental = Action \args -> do
       , debug: sourceMaps
       , outDir: maybe buildPath (resolve [ buildPath ] <<< dirname) toOpt
       }
-  -- case toOpt of
-  --   Just to | sourceMaps -> sorcery empty to
-  --   _ -> pure unit
+  case toOpt of
+    Just to | sourceMaps -> sorcery to
+    _ -> pure unit
 
 -- | Given the build path, modify this process' NODE_PATH environment variable
 -- | for browserify.

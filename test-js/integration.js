@@ -409,7 +409,7 @@ describe("integration tests", function() {
     assert.equal(out.trim(), hello);
   }));
 
-  it.only("pulp browserify --source-maps --to", run(function*(sh, pulp, assert) {
+  it("pulp browserify --source-maps --to", run(function*(sh, pulp, assert) {
     yield pulp("init");
     yield pulp("browserify --source-maps --to out.js");
     const [out] = yield sh("node out.js");
@@ -417,11 +417,11 @@ describe("integration tests", function() {
     assert.exists("out.js.map");
   }));
 
-  it.only("pulp browserify --source-maps --to subdir", run(function*(sh, pulp, assert, temp) {
+  it("pulp browserify --source-maps --to subdir", run(function*(sh, pulp, assert, temp) {
     yield pulp("init");
     yield fs.mkdir(path.join(temp, "subdir"));    
     yield pulp("browserify --source-maps --to subdir/out.js");
-    assert.exists("out.js.map");
+    assert.exists("subdir/out.js.map");
   }));
 
   it("pulp browserify -O", run(function*(sh, pulp, assert) {
@@ -438,7 +438,7 @@ describe("integration tests", function() {
     assert.equal(out.trim(), hello);
   }));
 
-  it.only("pulp browserify --source-maps -O --to", run(function*(sh, pulp, assert) {
+  it("pulp browserify --source-maps -O --to", run(function*(sh, pulp, assert) {
     yield pulp("init");
     yield pulp("browserify --source-maps -O --to out.js");
     const [out] = yield sh("node out.js");
@@ -446,11 +446,11 @@ describe("integration tests", function() {
     assert.exists("out.js.map");
   }));
 
-  it.only("pulp browserify --source-maps -O --to subdir", run(function*(sh, pulp, assert, temp) {
+  it("pulp browserify --source-maps -O --to subdir", run(function*(sh, pulp, assert, temp) {
     yield pulp("init");
     yield fs.mkdir(path.join(temp, "subdir"));
     yield pulp("browserify --source-maps -O --to subdir/out.js");
-    assert.exists("out.js.map");
+    assert.exists("subdir/out.js.map");
   }));
 
   it("pulp browserify --skip-compile", run(function*(sh, pulp, assert, temp) {

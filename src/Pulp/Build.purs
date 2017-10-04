@@ -19,7 +19,6 @@ import Data.Newtype (unwrap)
 import Data.List (fromFoldable, List(..))
 import Data.Version.Haskell (Version(..))
 import Data.Argonaut (jsonParser)
-import Data.StrMap (empty)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception as Exception
 import Control.Monad.Eff.Unsafe (unsafePerformEff)
@@ -41,7 +40,7 @@ import Pulp.Exec (psa, pursBuild, pursBundle)
 import Pulp.Files
 import Pulp.Validate (getPsaVersion)
 import Pulp.Utils (throw)
-import Pulp.Sorcery
+import Pulp.Sorcery (sorcery)
 
 data BuildType = NormalBuild | TestBuild
 
@@ -149,7 +148,7 @@ bundle args = do
   bundledJs <- pursBundle (outputModules buildPath) bundleArgs Nothing
 
   case to of
-    Just to' | sourceMaps -> sorcery empty to'
+    Just to' | sourceMaps -> sorcery to'
     Just _ -> pure unit
     _ -> withOutputStream opts $ \out' -> write out' bundledJs
 
